@@ -1,0 +1,14 @@
+{
+  "name": "pierogis-bot",
+  "version": "1.0.0",
+  "description": "twitter bot to post pierogis",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Kyle Moore",
+  "license": "ISC",
+  "dependencies": {
+    "serverless-python-requirements": "^5.1.0"
+  }
+}
