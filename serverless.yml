@@ -46,12 +46,13 @@ provider:
 #    - exclude-me-dir/**
 
 functions:
-  schedule-tweet:
-    handler: handler.schedule_tweet
+  poll-mentions:
+    handler: pierogis_bot.bot.poll_mentions
     events:
       - schedule: rate(1 minute)
     environment:
       BEARER_TOKEN: ${file(./keys.yml):bearerToken}
+
 #    The following are a few example events you can configure
 #    NOTE: Please make sure to change your handler code to work with those events
 #    Check the event documentation for details

@@ -1,1 +1,3 @@
-from .twitter import Api
+from .bot import Bot
+
+bot = Bot()

@@ -28,7 +28,9 @@ if __name__ == '__main__':
     pin = input("Enter the pin:")
 
     # now get an access token with the agreed upon request token
-    access_token_response = api.post_for_access_token(pin, request_token, request_token_secret)
+    api.oauth_access_token = request_token
+    api.oauth_access_token_secret = request_token_secret
+    access_token_response = api.post_for_access_token(pin)
 
     body = access_token_response.text.split('&')
 
