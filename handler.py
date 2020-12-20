@@ -7,7 +7,7 @@ from pierogis_bot import Api
 load_dotenv("./.env")
 
 oauth_consumer_key = os.getenv('OAUTH_CONSUMER_KEY')
-oauth_consumer_secret = os.getenv('OAUTH_CONSUMERSECRET')
+oauth_consumer_secret = os.getenv('OAUTH_CONSUMER_SECRET')
 bearer_token = os.getenv('BEARER_TOKEN')
 
 oauth_access_token = os.getenv('OAUTH_ACCESS_TOKEN')

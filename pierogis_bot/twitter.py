@@ -9,7 +9,9 @@ from requests_oauthlib import OAuth1
 class Api:
     oauth_request_url = "https://api.twitter.com/oauth/request_token"
     oauth_access_url = "https://api.twitter.com/oauth/access_token"
-    status_update_url = "https://api.twitter.com/1.1/statuses/update.json"
+
+    users_mentions_url = "https://api.twitter.com/2/users/{}/mentions"
+    statuses_update_url = "https://api.twitter.com/1.1/statuses/update.json"
     media_upload_url = "https://upload.twitter.com/1.1/media/upload.json"
 
     def __init__(self, bearer_token, oauth_consumer_key, oauth_consumer_secret):
@@ -60,13 +62,28 @@ class Api:
             params['media_id'] = media_id
 
         oauth = self.get_oauth(access_token, access_token_secret)
-        response = requests.post(url=self.status_update_url, params=params, auth=oauth)
+        response = requests.post(url=self.statuses_update_url, params=params, auth=oauth)
 
         return response
 
-    def user_mentions(self, user_id):
-        params = {"tweet.fields": "created_at"}
-        return "https://api.twitter.com/2/users/{}/mentions".format(user_id)
+    def get_users_mentions(self, user_id, request_token = None, request_token_secret = None, tweet_fields = None, expansions = None):
+        params = {}
+
+        if isinstance(tweet_fields, list):
+            params['tweet.fields'] = ','.join(tweet_fields)
+        if isinstance(expansions, list):
+            params['expansions'] = ','.join(expansions)
+
+        statuses_mentions_timeline_url = self.users_mentions_url.format(user_id)
+
+        # use the request token in oauth
+        if request_token & request_token_secret:
+            oauth = self.get_oauth(request_token, request_token_secret)
+            response = requests.get(url=statuses_mentions_timeline_url, params=params, auth=oauth)
+        else:
+            response = requests.get(url=statuses_mentions_timeline_url, params=params, headers=self.headers)
+
+        return response.json()
 
     class MediaUpload:
         def __init__(self, media_upload_url, oauth, media):

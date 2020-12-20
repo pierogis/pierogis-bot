@@ -1,32 +1,49 @@
+from twitter import Api
 
 
 class Bot:
-    def poll_mentions(self):
-        for batch in search_batches():
-            LAMBDA.invoke(
-                FunctionName=TWEET_PROCESSOR_FUNCTION_NAME,
-                InvocationType='Event',
-                Payload=json.dumps(batch)
-            )
+    """
+    Handler class for serverless
+    """
 
+    allowed_media_types = ['image/png']
 
-    def search_batches():
-        since_id = None
-        if STREAM_MODE_ENABLED:
-            since_id = checkpoint.last_id()
+    def __init__(self, bearer_token, oauth_consumer_key, oauth_consumer_secret, user_id = None, oauth_access_token: str = None,
+                 oauth_access_token_secret: str = None):
+        self.user_id = user_id
+        self.api = Api(bearer_token, oauth_consumer_key, oauth_consumer_secret)
 
-        tweets = []
-        while True:
-            result = twitter_proxy.search(SEARCH_TEXT, since_id)
-            if not result['statuses']:
-                # no more results
-                break
+        self.oauth_access_token = oauth_access_token
+        self.oauth_access_token_secret = oauth_access_token_secret
 
-            tweets = result['statuses']
-            size = len(tweets)
-            for i in range(0, size, BATCH_SIZE):
-                yield tweets[i:min(i + BATCH_SIZE, size)]
-            since_id = result['search_metadata']['max_id']
+    def poll_mentions(self, event, context):
+        api = Api()
+        json = api.get_users_mentions(self.user_id, tweet_fields=['referenced_tweets'])
 
-            if STREAM_MODE_ENABLED:
-                checkpoint.update(since_id)
+        expansions = json['data']
+
+        for mention in json['data']:
+            # look for media in tweet
+            # look for media above this tweet
+            entities = mention.get('entities')
+            for entitity in entities:
+                urls = entitity['urls']
+
+                for url in urls:
+                    url['display_url']
+
+            if attachments & attachments.get('media_type') in self.allowed_media_types:
+                batch = {
+                    'media_id': media_id
+                }
+            else:
+                tweet.get('in_reply_to_id')
+            # LAMBDA.invoke(
+            #     FunctionName=TWEET_PROCESSOR_FUNCTION_NAME,
+            #     InvocationType='Event',
+            #     Payload=json.dumps(batch)
+            # )
+
+        # should also poll replies
+
+    def
