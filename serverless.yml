@@ -1,4 +1,3 @@
-
 service: pierogis-bot
 # app and org for use with dashboard.serverless.com
 #app: your-app-name
@@ -11,6 +10,17 @@ frameworkVersion: '2'
 provider:
   name: aws
   runtime: python3.8
+  iamRoleStatements:
+    - Effect: 'Allow'
+      Action:
+        - 'sqs:SendMessage'
+        - 'sqs:SendMessageBatch'
+      Resource:
+        Fn::GetAtt:
+          - BatchRequestsQueue
+          - Arn
+  deploymentBucket:
+    name: pierogis.live
 
 # you can overwrite defaults here
 #  stage: dev
@@ -48,10 +58,19 @@ provider:
 functions:
   poll-mentions:
     handler: pierogis_bot.bot.poll_mentions
-    events:
-      - schedule: rate(1 minute)
+#    events:
+#      - schedule: rate(1 minute)
     environment:
-      BEARER_TOKEN: ${file(./keys.yml):bearerToken}
+      BATCH_REQUESTS_QUEUE_URL:
+        Ref: BatchRequestsQueue
+  process-batch-request:
+    handler: pierogis_bot.bot.process_batch_request
+#    events:
+#      - sqs:
+#          arn:
+#            Fn::GetAtt:
+#              - BatchRequestsQueue
+#              - Arn
 
 #    The following are a few example events you can configure
 #    NOTE: Please make sure to change your handler code to work with those events
@@ -94,16 +113,18 @@ functions:
 #      variable2: value2
 
 # you can add CloudFormation resource templates here
-#resources:
-#  Resources:
-#    NewResource:
-#      Type: AWS::S3::Bucket
+resources:
+  Resources:
+    BatchRequestsQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: pierogis-bot-batch-requests
+#    TweetsMediaQueue:
+#      Type: AWS::SQS::Queue
 #      Properties:
-#        BucketName: my-new-bucket
-#  Outputs:
-#     NewOutput:
-#       Description: "Description for the output"
-#       Value: "Some output value"
+#        QueueName: pierogis-bot-tweets-media
 
 plugins:
   - serverless-python-requirements
+
+useDotenv: true
