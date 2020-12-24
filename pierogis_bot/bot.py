@@ -1,3 +1,5 @@
+import io
+
 import boto3 as boto3
 import requests
 
@@ -10,12 +12,12 @@ class Bot:
     """
 
     allowed_media_types = ['photo']
-    sqs = boto3.client('sqs')
-    s3 = boto3.client('s3')
+    sqs = boto3.resource('sqs')
+    s3 = boto3.resource('s3')
 
     def __init__(self, bearer_token, oauth_consumer_key, oauth_consumer_secret, user_id=None,
                  oauth_access_token: str = None, oauth_access_token_secret: str = None,
-                 store_batch_request_queue_url=None, batch_request_bucket=None
+                 store_batch_requests_queue_url=None, batch_requests_bucket=None
                  ):
         """
 
@@ -32,8 +34,8 @@ class Bot:
         self.oauth_access_token = oauth_access_token
         self.oauth_access_token_secret = oauth_access_token_secret
 
-        self.store_batch_request_queue_url = store_batch_request_queue_url
-        self.batch_request_bucket = batch_request_bucket
+        self.store_batch_requests_queue_url = store_batch_requests_queue_url
+        self.batch_requests_bucket = batch_requests_bucket
 
     def poll_mentions(self, event, context):
         json = self.api.get_users_mentions(
@@ -48,7 +50,7 @@ class Bot:
 
         expanded_media = self.__get_expanded_media(json)
 
-        media_to_process = []
+        dishes = []
         referenced_id_sets = []
 
         mentions = json['data']
@@ -56,18 +58,22 @@ class Bot:
             # try process remaining media that got exploded if it is in this tweet
             try:
                 media_keys = mention['attachments']['media_keys']
-                urls = []
                 for media_key in media_keys:
                     # loop through this mentions attachments
                     medium_metadata = expanded_media.pop(media_key)
-                    urls.append(medium_metadata['url'])
 
-                medium = {
-                    'reply_id': mention['id'],
-                    'urls': urls
-                }
+                    dish = {
+                        'id': mention['id'],
+                        'recipe': [
+                            {
 
-                media_to_process.append(medium)
+                                'ingredient': 'pierogi',
+                                'path': medium_metadata['url']
+                            }
+                        ]
+                    }
+
+                dishes.append(dish)
 
             except:
                 # need to look up referenced tweets and handle their media
@@ -75,11 +81,12 @@ class Bot:
                     [referenced_tweet['id'] for referenced_tweet in mention['referenced_tweets']]
                 )
 
-        self.__dispatch_batch_request(media_to_process)
+        # send this set of recipes to the queue
+        self.__dispatch_dishes_requests(dishes)
 
         media_to_process = self.__get_referenced_media(referenced_id_sets)
 
-        self.__dispatch_batch_request(media_to_process)
+        self.__dispatch_batch_requests(media_to_process)
 
     def __get_expanded_media(self, json):
         """
@@ -100,7 +107,7 @@ class Bot:
 
         return media
 
-    def __dispatch_batch_request(self, media):
+    def __dispatch_recipes(self, recipes):
         """
 
         :param id: the status id to respond to
@@ -110,16 +117,17 @@ class Bot:
         """
         # these are tweets in the response
         entries = []
-        for medium in media:
+        for recipe in recipes:
             entry = {
-                'Id': medium['mention_id'],
-                'MessageBody': ','.join(medium['urls'])
-            }
+                        'Id': medium['mention_id'],
+                        'MessageBody': recipe,
+                    },
 
             entries.append(entry)
 
-        self.sqs.send_message_batch(
-            QueueUrl=self.store_batch_request_queue_url,
+        queue = self.sqs.Queue(self.store_batch_requests_queue_url)
+
+        queue.send_messages(
             Entries=entries
         )
 
@@ -141,15 +149,42 @@ class Bot:
         records = event['Records']
         for record in records:
             mention_id = record['messageId']
-            urls_string = record['body']
-            urls = urls_string.split(',')
+            recipe = record['body']
+
+            bucket_name = self.batch_requests_bucket
+            object_name = '/'.join(['recipes', mention_id + '.json'])
+            s3_object = self.s3.Object(bucket_name, object_name)
+            s3_object.put(Body=recipe)
 
             i = 0
             for url in urls:
-                file = requests.get(url)
+                response = requests.get(url, stream=True)
+                file = io.BytesIO(response.content)
 
-                bucket_name = self.batch_request_bucket
-                object_name = mention_id + '/' + i
-                self.s3.upload_fileobj(file, bucket_name, object_name)
+                extension = url.split('.')[-1]
+
+                bucket_name = self.batch_requests_bucket
+                object_name = '/'.join(['batch_requests', mention_id, str(i) + extension])
+                s3_object = self.s3.Object(bucket_name, object_name)
+                s3_object.upload_fileobj(file)
 
                 i += 1
+
+        give_instruction_set
+
+    def process_media(self, event, context):
+        # receive media urls to download and put in s3
+        records = event['Records']
+        for record in records:
+            bucket_name = record['s3']['bucket']['name']
+            object_name = record['s3']['object']['key']
+            file = self.s3.get_file(bucket_name, object_name)
+
+            apply_manipulation(file)
+
+            response = requests.get(url, stream=True)
+            file = io.BytesIO(response.content)
+
+            bucket_name = self.batch_requests_bucket
+            object_name = '/'.join(['batch_requests', mention_id, str(i)])
+            self.s3.upload_fileobj(file, bucket_name, object_name)
