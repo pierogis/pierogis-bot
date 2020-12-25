@@ -6,7 +6,7 @@ import requests
 from requests_oauthlib import OAuth1
 
 
-class Api:
+class Twitter:
     oauth_request_url = "https://api.twitter.com/oauth/request_token"
     oauth_access_url = "https://api.twitter.com/oauth/access_token"
 
@@ -53,21 +53,21 @@ class Api:
 
         return response
 
-    def post_status_update(self, status, access_token, access_token_secret, media_id=None):
+    def post_status_update(self, status, access_token, access_token_secret, media_ids=None, reply_id=None):
         params = {}
 
         if status:
             params['status'] = status
 
-        if media_id:
-            params['media_id'] = media_id
+        if media_ids:
+            params['media_ids'] = ','.join(media_ids)
 
         oauth = self.get_oauth(access_token, access_token_secret)
         response = requests.post(url=self.statuses_update_url, params=params, auth=oauth)
 
         return response
 
-    def get_users_mentions(self, user_id, request_token=None, request_token_secret=None, tweet_fields=None,
+    def get_users_mentions(self, user_id, access_token=None, access_token_secret=None, tweet_fields=None,
                            expansions=None, media_fields=None):
         params = {}
 
@@ -81,8 +81,8 @@ class Api:
         statuses_mentions_timeline_url = self.users_mentions_url.format(user_id)
 
         # use the request token in oauth
-        if (request_token is not None) & (request_token_secret is not None):
-            oauth = self.get_oauth(request_token, request_token_secret)
+        if (access_token is not None) & (access_token_secret is not None):
+            oauth = self.get_oauth(access_token, access_token_secret)
             response = requests.get(url=statuses_mentions_timeline_url, params=params, auth=oauth)
         else:
             response = requests.get(url=statuses_mentions_timeline_url, params=params, headers=self.headers)
@@ -227,7 +227,7 @@ class Api:
 
     def post_media_upload(self, media, access_token, access_token_secret):
         oauth = self.get_oauth(access_token, access_token_secret)
-        media_upload = self.MediaUpload(self.media_upload_url, oauth)
+        media_upload = self.MediaUpload(self.media_upload_url, oauth, media)
 
         media_upload.upload_init()
         media_upload.upload_append()

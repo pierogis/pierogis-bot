@@ -1,6 +1,6 @@
 import os
 
-from .twitter import Api
+from .twitter import Twitter
 
 if __name__ == '__main__':
     # get application credentials
@@ -9,7 +9,7 @@ if __name__ == '__main__':
     oauth_consumer_secret = os.getenv('OAUTH_CONSUMER_SECRET')
 
     # put these credentials into an api
-    api = Api(bearer_token, oauth_consumer_key, oauth_consumer_secret)
+    api = Twitter(bearer_token, oauth_consumer_key, oauth_consumer_secret)
 
     # leg 1 of Oauth. Get a request token and secret from twitter
     request_token_response = api.post_for_request_token()

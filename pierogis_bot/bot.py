@@ -3,7 +3,7 @@ import io
 import boto3 as boto3
 import requests
 
-from .twitter import Api
+from .twitter import Twitter
 
 
 class Bot:
@@ -17,7 +17,7 @@ class Bot:
 
     def __init__(self, bearer_token, oauth_consumer_key, oauth_consumer_secret, user_id=None,
                  oauth_access_token: str = None, oauth_access_token_secret: str = None,
-                 store_batch_requests_queue_url=None, batch_requests_bucket=None
+                 recipes_batch_requests_topic_url=None, batch_requests_bucket=None
                  ):
         """
 
@@ -29,16 +29,16 @@ class Bot:
         :param oauth_access_token_secret:
         """
         self.user_id = user_id
-        self.api = Api(bearer_token, oauth_consumer_key, oauth_consumer_secret)
+        self.twitter = Twitter(bearer_token, oauth_consumer_key, oauth_consumer_secret)
 
         self.oauth_access_token = oauth_access_token
         self.oauth_access_token_secret = oauth_access_token_secret
 
-        self.store_batch_requests_queue_url = store_batch_requests_queue_url
-        self.batch_requests_bucket = batch_requests_bucket
+        self.recipes_batch_requests_topic_url = recipes_batch_requests_topic_url
+        self.batch_requests_bucket = self.s3.Bucket(batch_requests_bucket)
 
     def poll_mentions(self, event, context):
-        json = self.api.get_users_mentions(
+        json = self.twitter.get_users_mentions(
             self.user_id, tweet_fields=['author_id', 'referenced_tweets'],
             expansions=['attachments.media_keys'], media_fields=['type',
                                                                  'url']
@@ -134,7 +134,7 @@ class Bot:
     def __get_referenced_media(self, referenced_id_sets):
         # get the media from a set of tweets
         referenced_ids = [referenced_ids for referenced_ids in referenced_id_sets]
-        json = self.api.get_tweets(
+        json = self.twitter.get_tweets(
             referenced_ids,
             expansions=['attachments.media_keys'], media_fields=['type',
                                                                  'url']
@@ -144,7 +144,7 @@ class Bot:
 
         return media
 
-    def store_batch_request(self, event, context):
+    def download_recipe(self, event, context):
         # receive media urls to download and put in s3
         records = event['Records']
         for record in records:
@@ -170,14 +170,12 @@ class Bot:
 
                 i += 1
 
-        give_instruction_set
-
-    def process_media(self, event, context):
+    def cook_recipe(self, event, context):
         # receive media urls to download and put in s3
         records = event['Records']
         for record in records:
-            bucket_name = record['s3']['bucket']['name']
             object_name = record['s3']['object']['key']
+            self.batch_requests_bucket.Object(object_name)
             file = self.s3.get_file(bucket_name, object_name)
 
             apply_manipulation(file)
@@ -186,5 +184,26 @@ class Bot:
             file = io.BytesIO(response.content)
 
             bucket_name = self.batch_requests_bucket
-            object_name = '/'.join(['batch_requests', mention_id, str(i)])
+            object_name = '/'.join(['recipes_batch_requests', mention_id, str(i)])
             self.s3.upload_fileobj(file, bucket_name, object_name)
+
+    def reply_tweet(self, event, context):
+        keys = event['keys']
+        reply_id = event['mention_id']
+        username = event['username']
+
+        bucket_name = self.batch_requests_bucket
+        s3_bucket = self.s3.Bucket(bucket_name)
+
+        media_ids = []
+        for key in keys:
+            file = io.BytesIO()
+            s3_bucket.download_fileobj(key, file)
+
+            media_id = self.twitter.post_media_upload(file, self.oauth_access_token, self.oauth_access_token_secret)
+            media_ids.append(media_id)
+
+        status = "@{}".format(username)
+
+        self.twitter.post_status_update(status, self.oauth_access_token, self.oauth_access_token_secret,
+                                        media_ids=media_ids, reply_id=reply_id)

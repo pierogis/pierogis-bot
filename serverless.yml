@@ -7,18 +7,20 @@ service: pierogis-bot
 # Check out our docs for more details
 frameworkVersion: '2'
 
+useDotenv: true
+
 provider:
   name: aws
   runtime: python3.8
-  iamRoleStatements:
-    - Effect: 'Allow'
-      Action:
-        - 'sqs:SendMessage'
-        - 'sqs:SendMessageBatch'
-      Resource:
-        Fn::GetAtt:
-          - BatchRequestsQueue
-          - Arn
+#  iamRoleStatements:
+#    - Effect: 'Allow'
+#      Action:
+#        - 'sqs:SendMessage'
+#        - 'sqs:SendMessageBatch'
+#      Resource:
+#        Fn::GetAtt:
+#          - BatchRequestsQueue
+#          - Arn
   deploymentBucket:
     name: pierogis.live
 
@@ -41,90 +43,97 @@ functions:
     #    events:
     #      - schedule: rate(1 minute)
     environment:
-      BATCH_REQUESTS_QUEUE_URL:
-        Ref: BatchRequestsQueue
+      BATCH_R_REQUESTS_QUEUE_URL:
+        Ref: recipesBatchRequestsTopic
+  downloadRecipe:
+    handler: pierogis_bot.bot.download_recipe
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt:
+              - downloadRecipeQueue
+              - Arn
   cookRecipe:
     handler: pierogis_bot.bot.cook_recipe
-
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt:
+              - cookRecipeQueue
+              - Arn
+  replyTweet:
+    handler: pierogis_bot.bot.reply_tweet
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt:
+              - replyTweetQueue
+              - Arn
 
 stepFunctions:
   stateMachines:
     batchRecipesMachine:
       events:
         - sns:
+            Ref: recipesBatchRequestsTopic
       definition:
         Comment: "Workflow for cooking recipes from a batch request in parallel and executing a reply action"
-        StartAt: CookRecipes
+        StartAt: CookRecipesBatch
         States:
-          CookRecipes:
+          CookRecipesBatch:
             Type: Map
             MaxConcurrency: 0
             ItemsPath: $.recipes
             Iterator:
-              StartAt: DownloadIngredient
+              StartAt: DownloadRecipe
               States:
-                DownloadIngredient:
+                DownloadRecipe:
                   Type: Task
                   Resource: arn:aws:states:::sqs:sendMessage.waitForTaskToken
                   Parameters:
                     QueueUrl:
-                      Fn::GetAtt: [downloadMediaQueue, Arn]
-                    Payload:
-                      $.url: $.pierogi.url
+                      Fn::GetAtt: [ downloadRecipeQueue, Arn ]
+                    MessageBody.$: $.input
                   Next: CookRecipe
                 CookRecipe:
                   Type: Task
-                  Resource:
-                    Fn::GetAtt: [cook-Recipe, Arn]
+                  Resource: arn:aws:states:::sqs:sendMessage.waitForTaskToken
                   Parameters:
-                    FunctionName: arn:aws:lambda:REGION:ACCOUNT_ID:function:cook_recipe
-                    Payload:
-                      $.path: $
+                    QueueUrl:
+                      Fn::GetAtt: [ cookRecipeQueue, Arn ]
+                    MessageBody: $.input
                   End: true
             Next: Reply Tweet
           Reply Tweet:
             Type: Task
-            Resource: arn:aws:states:::lambda:invoke
+            Resource: arn:aws:states:::sqs:sendMessage.waitForTaskToken
             Parameters:
-              FunctionName: arn:aws:lambda:REGION:ACCOUNT_ID:function:reply_tweet
-              Payload:
-                Input.$: $
+              QueueUrl:
+                Fn::GetAtt: [ replyTweetQueue, Arn ]
+              MessageBody.$: $.input
             End: true
-
-      dependsOn: CustomIamRole
-      tags:
-        Team: Atlantis
-        metrics:
-          - executionsTimedOut
-          - executionsFailed
-          - executionsAborted
-          - metric: executionThrottled
-            treatMissingData: breaching # overrides below default
-          - executionsSucceeded
-        treatMissingData: ignore # optional
-    activities:
-      - myTask
-      - yourTask
-    validate: true # enable pre-deployment definition validation (disabled by default)
+  validate: true # enable pre-deployment definition validation (disabled by default)
 
 # you can add CloudFormation resource templates here
 resources:
   Resources:
-    downloadMediaQueue:
-      Type: AWS::SQS::Queue
-        Properties:
-          QueueName: downloadMediaQueue
-    processPierogiQueue:
+    recipesBatchRequestsTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName: recipesBatchRequestsTopic
+    downloadRecipeQueue:
       Type: AWS::SQS::Queue
       Properties:
-        QueueName: processPierogiQueue
-#    TweetsMediaQueue:
-#      Type: AWS::SQS::Queue
-#      Properties:
-#        QueueName: pierogis-bot-tweets-media
+        QueueName: downloadRecipeQueue
+    cookRecipeQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: cookRecipeQueue
+    replyTweetQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: replyTweetQueue
 
 plugins:
   - serverless-python-requirements
   - serverless-step-functions
-
-useDotenv: true
