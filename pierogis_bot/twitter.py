@@ -68,7 +68,7 @@ class Twitter:
         return response
 
     def get_users_mentions(self, user_id, access_token=None, access_token_secret=None, tweet_fields=None,
-                           expansions=None, media_fields=None):
+                           expansions=None, media_fields=None, user_fields=None):
         params = {}
 
         if isinstance(tweet_fields, list):
@@ -77,6 +77,8 @@ class Twitter:
             params['expansions'] = ','.join(expansions)
         if isinstance(media_fields, list):
             params['media.fields'] = ','.join(media_fields)
+        if isinstance(user_fields, list):
+            params['user.fields'] = ','.join(user_fields)
 
         statuses_mentions_timeline_url = self.users_mentions_url.format(user_id)
 
@@ -100,16 +102,16 @@ class Twitter:
         if isinstance(expansions, list):
             params['expansions'] = ','.join(expansions)
         if isinstance(media_fields, list):
-            params['media_fields'] = ','.join(media_fields)
+            params['media.fields'] = ','.join(media_fields)
 
         get_tweet_url = self.get_tweets_url
 
         # use the request token in oauth
-        if request_token & request_token_secret:
+        if (request_token is not None) & (request_token_secret is not None):
             oauth = self.get_oauth(request_token, request_token_secret)
-            response = requests.get(url=statuses_mentions_timeline_url, params=params, auth=oauth)
+            return requests.get(url=get_tweet_url, params=params, auth=oauth).json()
         else:
-            response = requests.get(url=statuses_mentions_timeline_url, params=params, headers=self.headers)
+            return requests.get(url=get_tweet_url, params=params, headers=self.headers).json()
 
     class MediaUpload:
         def __init__(self, media_upload_url, oauth, media):

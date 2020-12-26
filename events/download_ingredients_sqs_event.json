@@ -3,19 +3,12 @@
     {
       "messageId": "1340685803215839234",
       "receiptHandle": "MessageReceiptHandle",
-      "body": [
-        {
-          "recipe": [
-            {
-              "ingredient": "pierogi",
-              "path": "https://pbs.twimg.com/media/EpsSlkcWwAA7xfX.jpg"
-            },
-            {
-              "ingredient": "sort"
-            }
-          ]
-        }
-      ],
+      "body": {
+        "mealId": 1340685803215839234,
+        "urls": [
+          "https://pbs.twimg.com/media/EpsSlkcWwAA7xfX.jpg"
+        ]
+      },
       "attributes": {
         "ApproximateReceiveCount": "1",
         "SentTimestamp": "1523232000000",

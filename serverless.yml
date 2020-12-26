@@ -12,17 +12,28 @@ useDotenv: true
 provider:
   name: aws
   runtime: python3.8
-#  iamRoleStatements:
-#    - Effect: 'Allow'
-#      Action:
-#        - 'sqs:SendMessage'
-#        - 'sqs:SendMessageBatch'
-#      Resource:
-#        Fn::GetAtt:
-#          - BatchRequestsQueue
-#          - Arn
+  iamRoleStatements:
+    - Effect: 'Allow'
+      Action:
+        - 's3:PutObject'
+      Resource:
+        Fn::Join:
+          - ""
+          - - "arn:aws:s3:::"
+            - ${env:MEAL_REQUESTS_BUCKET}
+            - "/*"
+    - Effect: 'Allow'
+      Action:
+        - 'states:SendTaskSuccess'
+      Resource:
+        Ref: MealChef
   deploymentBucket:
-    name: pierogis.live
+    name: ${env:MEAL_REQUESTS_BUCKET}
+  environment:
+    OAUTH_CONSUMER_KEY: ${env:OAUTH_CONSUMER_KEY}
+    OAUTH_CONSUMER_SECRET: ${env:OAUTH_CONSUMER_SECRET}
+    BEARER_TOKEN: ${env:BEARER_TOKEN}
+    MEAL_REQUESTS_BUCKET: ${env:MEAL_REQUESTS_BUCKET}
 
 # you can define service wide environment variables here
 #  environment:
@@ -38,102 +49,122 @@ provider:
 #    - exclude-me-dir/**
 
 functions:
-  pollMentions:
-    handler: pierogis_bot.bot.poll_mentions
+  PollMentions:
+    handler: handler.poll_mentions
     #    events:
     #      - schedule: rate(1 minute)
     environment:
-      BATCH_R_REQUESTS_QUEUE_URL:
-        Ref: recipesBatchRequestsTopic
-  downloadRecipe:
-    handler: pierogis_bot.bot.download_recipe
+      MEAL_CHEF_ARN:
+        Ref: MealChef
+      USER_ID: ${env:USER_ID}
+  DownloadIngredients:
+    handler: handler.download_ingredients
     events:
       - sqs:
           arn:
             Fn::GetAtt:
-              - downloadRecipeQueue
+              - DownloadIngredientsQueue
               - Arn
-  cookRecipe:
-    handler: pierogis_bot.bot.cook_recipe
+  CookDishes:
+    handler: handler.cook_dishes
     events:
       - sqs:
           arn:
             Fn::GetAtt:
-              - cookRecipeQueue
+              - CookDishesQueue
               - Arn
-  replyTweet:
-    handler: pierogis_bot.bot.reply_tweet
+  ReplyTweets:
+    handler: handler.reply_tweets
     events:
       - sqs:
           arn:
             Fn::GetAtt:
-              - replyTweetQueue
+              - ReplyTweetsQueue
               - Arn
+    environment:
+      OAUTH_ACCESS_TOKEN: ${env:OAUTH_ACCESS_TOKEN}
+      OAUTH_ACCESS_TOKEN_SECRET: ${env:OAUTH_ACCESS_TOKEN_SECRET}
 
 stepFunctions:
   stateMachines:
-    batchRecipesMachine:
-      events:
-        - sns:
-            Ref: recipesBatchRequestsTopic
+    MealChef:
+      id: MealChef
+      name: MealChef
       definition:
         Comment: "Workflow for cooking recipes from a batch request in parallel and executing a reply action"
-        StartAt: CookRecipesBatch
+        StartAt: CookMeal
         States:
-          CookRecipesBatch:
+          CookMeal:
             Type: Map
             MaxConcurrency: 0
-            ItemsPath: $.recipes
+            ItemsPath: $.dishes
             Iterator:
-              StartAt: DownloadRecipe
+              StartAt: DownloadIngredients
               States:
-                DownloadRecipe:
+                DownloadIngredients:
                   Type: Task
                   Resource: arn:aws:states:::sqs:sendMessage.waitForTaskToken
                   Parameters:
                     QueueUrl:
-                      Fn::GetAtt: [ downloadRecipeQueue, Arn ]
-                    MessageBody.$: $.input
-                  Next: CookRecipe
-                CookRecipe:
+                      Ref: DownloadIngredientsQueue
+                    MessageBody:
+                      mealId.$: $.mealId
+                      urls.$: $.urls
+                      taskToken.$: $$.Task.Token
+                  ResultPath: $.keys
+                  Next: CookDish
+                CookDish:
                   Type: Task
                   Resource: arn:aws:states:::sqs:sendMessage.waitForTaskToken
                   Parameters:
                     QueueUrl:
-                      Fn::GetAtt: [ cookRecipeQueue, Arn ]
-                    MessageBody: $.input
+                      Ref: CookDishesQueue
+                    MessageBody:
+                      mealId.$: $.mealId
+                      ingredients.$: $.ingredients
+                      recipe.$: $.recipe
+                      keys.$: $.keys
+                      taskToken.$: $$.Task.Token
                   End: true
-            Next: Reply Tweet
-          Reply Tweet:
+            Next: ReplyTweet
+          ReplyTweet:
             Type: Task
             Resource: arn:aws:states:::sqs:sendMessage.waitForTaskToken
             Parameters:
               QueueUrl:
-                Fn::GetAtt: [ replyTweetQueue, Arn ]
-              MessageBody.$: $.input
+                Ref: ReplyTweetsQueue
+              MessageBody:
+                keys: $.input
+                mealId.$: $.mealId
+                username.$: $.username
             End: true
-  validate: true # enable pre-deployment definition validation (disabled by default)
+  validate: true # enable pre-deployment definition validation (disabled by default
 
 # you can add CloudFormation resource templates here
 resources:
   Resources:
-    recipesBatchRequestsTopic:
-      Type: AWS::SNS::Topic
-      Properties:
-        TopicName: recipesBatchRequestsTopic
-    downloadRecipeQueue:
+    DownloadIngredientsQueue:
       Type: AWS::SQS::Queue
       Properties:
-        QueueName: downloadRecipeQueue
-    cookRecipeQueue:
+        QueueName: DownloadIngredientsQueue
+    CookDishesQueue:
       Type: AWS::SQS::Queue
       Properties:
-        QueueName: cookRecipeQueue
-    replyTweetQueue:
+        QueueName: CookDishesQueue
+    ReplyTweetsQueue:
       Type: AWS::SQS::Queue
       Properties:
-        QueueName: replyTweetQueue
+        QueueName: ReplyTweetsQueue
+  Outputs:
+    MealChefArn:
+      Description: "The ARN of the mealChef StateMachine"
+      Value:
+        Ref: MealChef
 
 plugins:
   - serverless-python-requirements
   - serverless-step-functions
+
+custom:
+  pythonRequirements:
+    dockerizePip: non-linux

@@ -7,6 +7,7 @@ setup(
     install_requires=[
         'requests>=2.25.1',
         'requests-oauthlib',
-        'python-dotenv'
+        'python-dotenv',
+        'pierogis'
     ]
 )
