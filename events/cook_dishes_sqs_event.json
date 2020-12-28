@@ -3,7 +3,7 @@
     {
       "messageId": "1340685803215839234",
       "receiptHandle": "MessageReceiptHandle",
-      "body": "{\"mealId\": \"1340685803215839234\",\"ingredients\": {\"pierogi\": {\"type\": \"pierogi\",\"args\": {},\"kwargs\": {\"path\": 0}}},\"recipe\": [\"pierogi\"],\"keys\": [\"input_media/1340685803215839234/0.jpg\"]}",
+      "body": "{\"orderId\": \"078c6f60-3e02-460c-baee-8245e94ff5f3\",\"ingredients\": {\"pierogi\": {\"type\": \"pierogi\",\"args\": {},\"kwargs\": {\"path\": 0}}},\"recipe\": [\"pierogi\"],\"keys\": [\"input_media/1340685803215839234/0.jpg\"]}",
       "attributes": {
         "ApproximateReceiveCount": "1",
         "SentTimestamp": "1523232000000",

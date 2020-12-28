@@ -1,4 +1,5 @@
 import functools
+import os
 import secrets
 import time
 
@@ -56,18 +57,19 @@ class Twitter:
     def post_status_update(self, status, access_token, access_token_secret, media_ids=None, reply_id=None):
         params = {}
 
-        if status:
+        if status is not None:
             params['status'] = status
-
-        if media_ids:
-            params['media_ids'] = ','.join(media_ids)
+        if media_ids is not None:
+            params['media_ids'] = media_ids
+        if reply_id is not None:
+            params['in_reply_to_id'] = str(reply_id)
 
         oauth = self.get_oauth(access_token, access_token_secret)
         response = requests.post(url=self.statuses_update_url, params=params, auth=oauth)
 
         return response
 
-    def get_users_mentions(self, user_id, access_token=None, access_token_secret=None, tweet_fields=None,
+    def get_users_mentions(self, user_id, access_token=None, access_token_secret=None, since_id=None, tweet_fields=None,
                            expansions=None, media_fields=None, user_fields=None):
         params = {}
 
@@ -79,6 +81,8 @@ class Twitter:
             params['media.fields'] = ','.join(media_fields)
         if isinstance(user_fields, list):
             params['user.fields'] = ','.join(user_fields)
+        if since_id is not None:
+            params['since_id'] = since_id
 
         statuses_mentions_timeline_url = self.users_mentions_url.format(user_id)
 
@@ -114,12 +118,12 @@ class Twitter:
             return requests.get(url=get_tweet_url, params=params, headers=self.headers).json()
 
     class MediaUpload:
-        def __init__(self, media_upload_url, oauth, media):
+        def __init__(self, media_upload_url, oauth, path):
             self.media_upload_url = media_upload_url
             self.oauth = oauth
-            self.media = media
+            self.path = path
+            self.total_bytes = os.path.getsize(path)
 
-            self.total_bytes = media.total_bytes
             self.media_type = 'image/png'
             self.media_category = 'TweetImage'
 
@@ -150,27 +154,29 @@ class Twitter:
             segment_id = 0
             bytes_sent = 0
 
-            while bytes_sent < self.total_bytes:
-                chunk = self.media.read(4 * 1024 * 1024)
+            with open(self.path, 'rb') as file:
+                while bytes_sent < self.total_bytes:
 
-                print('APPEND')
+                    chunk = file.read(4 * 1024 * 1024)
 
-                request_data = {
-                    'command': 'APPEND',
-                    'media_id': self.media_id,
-                    'segment_index': segment_id
-                }
+                    print('APPEND')
 
-                files = {
-                    'media': chunk
-                }
+                    request_data = {
+                        'command': 'APPEND',
+                        'media_id': self.media_id,
+                        'segment_index': segment_id
+                    }
 
-                req = requests.post(url=self.media_upload_url, data=request_data, files=files, auth=self.oauth)
+                    files = {
+                        'media': chunk
+                    }
 
-                segment_id = segment_id + 1
-                bytes_sent = self.media.tell()
+                    req = requests.post(url=self.media_upload_url, data=request_data, files=files, auth=self.oauth)
 
-                print('%s of %s bytes uploaded' % (str(bytes_sent), str(self.total_bytes)))
+                    segment_id = segment_id + 1
+                    bytes_sent = file.tell()
+
+                    print('%s of %s bytes uploaded' % (str(bytes_sent), str(self.total_bytes)))
 
             print('Upload chunks complete.')
 
@@ -185,10 +191,9 @@ class Twitter:
                 'media_id': self.media_id
             }
 
-            req = requests.post(url=self.media_upload_url, data=request_data, auth=self.oauth)
-            print(req.json())
+            response = requests.post(url=self.media_upload_url, data=request_data, auth=self.oauth)
 
-            processing_info = req.json().get('processing_info', None)
+            processing_info = response.json().get('processing_info', None)
             self.check_status(processing_info)
 
         def check_status(self, processing_info):
@@ -227,9 +232,9 @@ class Twitter:
             processing_info = req.json().get('processing_info', None)
             self.check_status(processing_info)
 
-    def post_media_upload(self, media, access_token, access_token_secret):
+    def post_media_upload(self, path, access_token, access_token_secret):
         oauth = self.get_oauth(access_token, access_token_secret)
-        media_upload = self.MediaUpload(self.media_upload_url, oauth, media)
+        media_upload = self.MediaUpload(self.media_upload_url, oauth, path)
 
         media_upload.upload_init()
         media_upload.upload_append()

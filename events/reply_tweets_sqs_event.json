@@ -3,13 +3,7 @@
     {
       "messageId": "1340685803215839234",
       "receiptHandle": "MessageReceiptHandle",
-      "body": {
-        "keys": [
-          "output_media/1340685803215839234/0.png"
-        ],
-        "mealId": "1340685803215839234",
-        "username": "@pierogis_bot"
-      },
+      "body": "{\"keys\":[\"output_media/1340685803215839234/0.png\"],\"mealId\":\"1340685803215839234\",\"username\":\"@pierogis_bot\"}",
       "attributes": {
         "ApproximateReceiveCount": "1",
         "SentTimestamp": "1523232000000",
