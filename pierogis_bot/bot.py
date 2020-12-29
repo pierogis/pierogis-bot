@@ -4,8 +4,8 @@ import uuid
 
 import boto3 as boto3
 import requests
+from pierogis import Chef
 
-from .chef import Chef
 from .twitter import Twitter
 
 
@@ -19,8 +19,8 @@ class Bot:
     s3 = boto3.resource('s3')
 
     def __init__(self, bearer_token, oauth_consumer_key, oauth_consumer_secret,
-                 orders_bucket_name, user_id=None, oauth_access_token: str = None,
-                 oauth_access_token_secret: str = None, chef_arn=None
+                 orders_bucket_name, user_id=None,
+                 oauth_access_token: str = None, oauth_access_token_secret: str = None
                  ):
         """
 
@@ -38,7 +38,6 @@ class Bot:
         self.oauth_access_token = oauth_access_token
         self.oauth_access_token_secret = oauth_access_token_secret
 
-        self.chef_arn = chef_arn
         self.orders_bucket = self.s3.Bucket(orders_bucket_name)
 
     def get_orders(self, since_id):
@@ -65,9 +64,15 @@ class Bot:
             # try process remaining media that got exploded if it is in this tweet
             dishes = []
 
+            if mention['author_id'] == self.user_id:
+                continue
+
+            mention_text = mention.get('text')
+            media_keys = mention.get('attachments', {}).get('media_keys', [])
+
             # if there was included media, try to create dishes for media in the current tweet
             if len(expanded_media) > 0:
-                dishes = self.__get_tweet_dishes(mention, expanded_media)
+                dishes = self.__get_tweet_dishes(mention_text, media_keys, expanded_media)
 
             # if there aren't any dishes from the current tweet and the caller indicated recurse
             if len(dishes) < 1:
@@ -80,17 +85,18 @@ class Bot:
                 referenced_tweets = referenced_tweets_response['data']
                 if len(expanded_media) > 0:
                     for tweet in referenced_tweets:
-                        dishes.extend(self.__get_tweet_dishes(tweet, expanded_media))
+                        media_keys = tweet.get('attachments', {}).get('media_keys', [])
+                        dishes.extend(self.__get_tweet_dishes(mention_text, media_keys, expanded_media))
 
             if len(dishes) > 0:
-                order_id = uuid.uuid4()
+                order_id = str(uuid.uuid4())
                 tweet_id = mention['id']
 
                 for dish in dishes:
                     dish['orderId'] = order_id
 
                 order = {
-                    'order_id': order_id,
+                    'orderId': order_id,
                     'tweet_id': tweet_id,
                     'author_id': mention['author_id'],
                     'dishes': dishes
@@ -100,13 +106,10 @@ class Bot:
 
         return orders
 
-    def __get_tweet_dishes(self, tweet, expanded_media):
+    def __get_tweet_dishes(self, tweet_text, media_keys, expanded_media):
         dishes = []
 
-        media_keys = tweet.get('attachments', {}).get('media_keys')
         if len(media_keys) > 0:
-            tweet_text = tweet.get('text')
-
             recipe_text = ' '.join(tweet_text.split()[1:-1])
 
             if recipe_text == '':
@@ -131,7 +134,7 @@ class Bot:
                         'ingredients': ingredients,
                         'seasoningLinks': seasoning_links,
                         'recipes': recipes,
-                        'file_links': file_links
+                        'fileLinks': file_links
                     }
 
                     dishes.append(dish)
@@ -185,44 +188,42 @@ class Bot:
 
         return tweets_response
 
-    def download_ingredients(self, meal_id, urls):
+    def download_ingredients(self, order_id, file_links):
         # receive media urls to download and put in s3
         i = 0
-        keys = []
-        for url in urls:
+        for file_uuid, url in file_links.items():
             response = requests.get(url, stream=True)
             file = io.BytesIO(response.content)
 
             extension = url.split('.')[-1]
 
-            object_name = '/'.join(['input_media', str(meal_id), str(i) + '.' + extension])
+            object_name = '/'.join(['input_media', str(order_id), str(i) + '.' + extension])
             self.orders_bucket.upload_fileobj(file, object_name)
 
-            keys.append(object_name)
+            file_links[file_uuid] = object_name
 
             i += 1
 
-        return keys
+        return file_links
 
-    def cook_dish(self, meal_id, ingredients_dict, recipe, input_keys, seasons=None):
+    def cook_dish(self, order_id, ingredient_descs, seasoning_links, recipe_orders, file_links):
         # receive ingredients, recipe, and s3 keys to cook a dish and store in s3
-        images = []
-        for key in input_keys:
-            image = io.BytesIO()
-            self.orders_bucket.download_fileobj(key, image)
-            images.append(image)
+        for ingredient_uuid, s3_key in file_links.items():
+            path = '/tmp/' + order_id + '-' + s3_key.split('/')[-1]
+            self.orders_bucket.download_file(s3_key, path)
+            file_links[ingredient_uuid] = path
 
-        output_key = '/'.join(['output_media', meal_id, '0' + '.png'])
+        output_filename = order_id + '.png'
+        output_key = '/'.join(['output_media', output_filename])
 
-        with io.BytesIO() as file:
-            self.chef.cook_json_pierogi(file, ingredients_dict, recipe, images, seasons=seasons)
-
-            file.seek(0)
-            self.orders_bucket.upload_fileobj(file, output_key)
+        output_path = '/'.join(['/tmp', output_filename])
+        cooked_dish = self.chef.cook_dish_desc(ingredient_descs, seasoning_links, recipe_orders, file_links)
+        cooked_dish.save(output_path)
+        self.orders_bucket.upload_file(output_path, output_key)
 
         return output_key
 
-    def reply_tweet(self, keys, meal_id, username):
+    def reply_tweet(self, tweet_id, author_id, keys):
         media_ids = []
         for key in keys:
             file_object = self.orders_bucket.Object(key)
@@ -232,7 +233,8 @@ class Bot:
             media_id = self.twitter.post_media_upload(path, self.oauth_access_token, self.oauth_access_token_secret)
             media_ids.append(media_id)
 
-        status = username
+        user_lookup_response = self.twitter.get_username(author_id)
+        status = '@' + user_lookup_response['data']['username']
 
         self.twitter.post_status_update(status, self.oauth_access_token, self.oauth_access_token_secret,
-                                        media_ids=media_ids, reply_id=meal_id)
+                                        media_ids=media_ids, reply_id=tweet_id)

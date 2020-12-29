@@ -15,6 +15,7 @@ class Twitter:
     statuses_update_url = "https://api.twitter.com/1.1/statuses/update.json"
     media_upload_url = "https://upload.twitter.com/1.1/media/upload.json"
     get_tweets_url = "https://api.twitter.com/2/tweets"
+    user_lookup_id_url = "https://api.twitter.com/2/users/"
 
     def __init__(self, bearer_token, oauth_consumer_key, oauth_consumer_secret):
         self.bearer_token = bearer_token
@@ -62,7 +63,7 @@ class Twitter:
         if media_ids is not None:
             params['media_ids'] = media_ids
         if reply_id is not None:
-            params['in_reply_to_id'] = str(reply_id)
+            params['in_reply_to_status_id'] = str(reply_id)
 
         oauth = self.get_oauth(access_token, access_token_secret)
         response = requests.post(url=self.statuses_update_url, params=params, auth=oauth)
@@ -156,7 +157,6 @@ class Twitter:
 
             with open(self.path, 'rb') as file:
                 while bytes_sent < self.total_bytes:
-
                     chunk = file.read(4 * 1024 * 1024)
 
                     print('APPEND')
@@ -241,3 +241,13 @@ class Twitter:
         media_upload.upload_finalize()
 
         return media_upload.media_id
+
+    def get_username(self, user_id, request_token=None, request_token_secret=None):
+        url = self.user_lookup_id_url + user_id
+
+        # use the request token in oauth
+        if (request_token is not None) & (request_token_secret is not None):
+            oauth = self.get_oauth(request_token, request_token_secret)
+            return requests.get(url=url, auth=oauth).json()
+        else:
+            return requests.get(url=url, headers=self.headers).json()

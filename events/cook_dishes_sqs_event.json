@@ -3,7 +3,7 @@
     {
       "messageId": "1340685803215839234",
       "receiptHandle": "MessageReceiptHandle",
-      "body": "{\"orderId\": \"078c6f60-3e02-460c-baee-8245e94ff5f3\",\"ingredients\": {\"pierogi\": {\"type\": \"pierogi\",\"args\": {},\"kwargs\": {\"path\": 0}}},\"recipe\": [\"pierogi\"],\"keys\": [\"input_media/1340685803215839234/0.jpg\"]}",
+      "body": "{\"ingredients\": {\"84ccc763-9d80-456e-86d6-209f40c51968\": {\"type\": \"pierogi\", \"args\": [], \"kwargs\": {\"file\": \"593b7190-5d64-4701-b0bf-714efce6f4d6\"}}, \"1645efde-887a-45e2-a8b3-ddc682e8bf48\": {\"type\": \"sort\", \"args\": [], \"kwargs\": {\"turns\": 0, \"lower_threshold\": 64, \"upper_threshold\": 180}}, \"481dc5a6-9c29-430a-9149-756442a827e3\": {\"type\": \"threshold\", \"args\": [], \"kwargs\": {\"lower_threshold\": 64, \"upper_threshold\": 180}}}, \"seasoningLinks\": {\"1645efde-887a-45e2-a8b3-ddc682e8bf48\": \"481dc5a6-9c29-430a-9149-756442a827e3\"}, \"recipes\": [[\"84ccc763-9d80-456e-86d6-209f40c51968\"], [\"1645efde-887a-45e2-a8b3-ddc682e8bf48\"]], \"fileLinks\": {\"593b7190-5d64-4701-b0bf-714efce6f4d6\": \"input_media/3d7104c7-9c77-43c1-959e-7eb25ef0166b/0.png\"}, \"orderId\": \"3d7104c7-9c77-43c1-959e-7eb25ef0166b\"}",
       "attributes": {
         "ApproximateReceiveCount": "1",
         "SentTimestamp": "1523232000000",

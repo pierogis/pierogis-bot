@@ -3,4 +3,4 @@ requests-oauthlib
 python-dotenv
 boto3
 --extra-index-url https://test.pypi.org/simple/
-pierogis
+pierogis>=0.0.2

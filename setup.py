@@ -8,6 +8,6 @@ setup(
         'requests>=2.25.1',
         'requests-oauthlib',
         'python-dotenv',
-        'pierogis'
+        'pierogis>=0.0.2'
     ]
 )

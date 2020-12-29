@@ -2,7 +2,6 @@ import json
 import os
 
 import boto3
-from boto3.dynamodb.conditions import Key
 from dotenv import load_dotenv
 
 from pierogis_bot import Bot
@@ -18,45 +17,60 @@ bearer_token = os.getenv('BEARER_TOKEN')
 oauth_access_token = os.getenv('OAUTH_ACCESS_TOKEN')
 oauth_access_token_secret = os.getenv('OAUTH_ACCESS_TOKEN_SECRET')
 
-chef_arn = os.getenv('MEAL_CHEF_ARN')
+kitchen_arn = os.getenv('KITCHEN_ARN')
 orders_bucket_name = os.getenv('ORDERS_BUCKET')
 user_id = os.getenv('USER_ID')
+
+orders_table_name = os.getenv('ORDERS_TABLE')
 
 bot = Bot(
     bearer_token, oauth_consumer_key, oauth_consumer_secret, orders_bucket_name,
     oauth_access_token=oauth_access_token, oauth_access_token_secret=oauth_access_token_secret,
-    chef_arn=chef_arn, user_id=user_id
+    user_id=user_id
 )
 
 sfn = boto3.client('stepfunctions')
 ssm = boto3.client('ssm')
+ddb = boto3.resource('dynamodb')
 
 
 def poll_mentions(event, context):
     # get the last tweet processed from parameter store
-    # since_id = ssm.get_parameter(Name='sinceId')
+    parameter_response = ssm.get_parameter(Name='/pierogis/chef/sinceId')
+    since_id = parameter_response['Parameter']['Value']
     # use the bot to poll the twitter api
-    orders = bot.get_orders(0)
+    orders = bot.get_orders(since_id)
+    # orders = bot.get_orders('1343753267034124289')
 
     tweet_id = None
-    # recipe, ingredients, seasons, and urls in dict
-    for order in orders:
-        try:
+    orders_table = ddb.Table(orders_table_name)
+    with orders_table.batch_writer() as batch:
+        for order in orders:
+            tweet_id = order.pop('tweet_id')
+            author_id = order.pop('author_id')
+            order['replyType'] = 'tweet'
+
+            batch.put_item(
+                Item={
+                    'orderId': order['orderId'],
+                    'replyType': order['replyType'],
+                    'tweetId': tweet_id,
+                    'authorId': author_id
+                }
+            )
+
             sfn.start_execution(
-                stateMachineArn=chef_arn,
+                stateMachineArn=kitchen_arn,
                 input=json.dumps(order)
             )
-        except:
-            pass
-        finally:
-            order_id = order['orderId']
 
     if tweet_id is not None:
         # update the since id
         ssm.put_parameter(
-            Name='sinceId',
+            Name='/pierogis/chef/sinceId',
             Value=str(tweet_id),
-            Overwrite=True
+            Overwrite=True,
+            Type='String'
         )
 
 
@@ -65,15 +79,15 @@ def download_ingredients(event, context):
     for record in records:
         body = json.loads(record['body'])
 
-        meal_id = str(body['mealId'])
-        urls = body['urls']
+        order_id = str(body['orderId'])
+        file_links = body['fileLinks']
 
-        keys = bot.download_ingredients(meal_id, urls)
+        file_links = bot.download_ingredients(order_id, file_links)
         task_token = body.get('taskToken')
         if task_token is not None:
             sfn.send_task_success(
                 taskToken=task_token,
-                output=json.dumps(keys)
+                output=json.dumps(file_links)
             )
 
 
@@ -83,11 +97,12 @@ def cook_dishes(event, context):
         body = json.loads(record['body'])
 
         order_id = body['orderId']
-        ingredients = body['ingredients']
-        recipe = body['recipe']
-        keys = body['keys']
+        ingredient_descs = body['ingredients']
+        seasoning_links = body['seasoningLinks']
+        recipe_orders = body['recipes']
+        file_links = body['fileLinks']
 
-        output_key = bot.cook_dish(order_id, ingredients, recipe, keys)
+        output_key = bot.cook_dish(order_id, ingredient_descs, seasoning_links, recipe_orders, file_links)
         task_token = body.get('taskToken')
         if task_token is not None:
             sfn.send_task_success(
@@ -101,7 +116,23 @@ def reply_tweets(event, context):
     for record in records:
         body = json.loads(record['body'])
         keys = body['keys']
-        meal_id = str(body['mealId'])
-        username = body['username']
+        order_id = str(body['orderId'])
+        reply_type = body['replyType']
 
-        bot.reply_tweet(keys, meal_id, username)
+        if reply_type == 'tweet':
+            orders_table = ddb.Table(orders_table_name)
+            response = orders_table.get_item(
+                Key={
+                    'orderId': order_id,
+                    'replyType': reply_type
+                },
+                AttributesToGet=[
+                    'authorId',
+                    'tweetId'
+                ],
+            )
+
+            author_id = response['Item']['authorId']
+            tweet_id = response['Item']['tweetId']
+
+            bot.reply_tweet(tweet_id, author_id, keys)

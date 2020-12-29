@@ -3,12 +3,7 @@
     {
       "messageId": "1340685803215839234",
       "receiptHandle": "MessageReceiptHandle",
-      "body": {
-        "mealId": 1340685803215839234,
-        "urls": [
-          "https://pbs.twimg.com/media/EpsSlkcWwAA7xfX.jpg"
-        ]
-      },
+      "body": "{\"orderId\": \"3d7104c7-9c77-43c1-959e-7eb25ef0166b\",\"fileLinks\": {\"593b7190-5d64-4701-b0bf-714efce6f4d6\": \"https://pbs.twimg.com/media/EqLYXF7WMAYi4pc.png\"}}",
       "attributes": {
         "ApproximateReceiveCount": "1",
         "SentTimestamp": "1523232000000",

@@ -3,7 +3,7 @@
     {
       "messageId": "1340685803215839234",
       "receiptHandle": "MessageReceiptHandle",
-      "body": "{\"keys\":[\"output_media/1340685803215839234/0.png\"],\"mealId\":\"1340685803215839234\",\"username\":\"@pierogis_bot\"}",
+      "body": "{\"keys\":[\"output_media/4e1d9029-36a3-4688-ab36-ef9f42d36bad.png\"],\"orderId\":\"4e1d9029-36a3-4688-ab36-ef9f42d36bad\",\"replyType\":\"tweet\"}",
       "attributes": {
         "ApproximateReceiveCount": "1",
         "SentTimestamp": "1523232000000",
