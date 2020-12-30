@@ -57,52 +57,54 @@ class Bot:
 
         # get expanded media from json response
         expanded_media = self.__get_expanded_media(mentions_response)
-        mentions = mentions_response['data']
+        mentions = mentions_response.get('data')
         orders = []
-        # loop through the tweets in the response
-        for mention in mentions:
-            # try process remaining media that got exploded if it is in this tweet
-            dishes = []
 
-            if mention['author_id'] == self.user_id:
-                continue
+        if mentions is not None:
+            # loop through the tweets in the response
+            for mention in mentions:
+                # try process remaining media that got exploded if it is in this tweet
+                dishes = []
 
-            mention_text = mention.get('text')
-            media_keys = mention.get('attachments', {}).get('media_keys', [])
+                if mention['author_id'] == self.user_id:
+                    continue
 
-            # if there was included media, try to create dishes for media in the current tweet
-            if len(expanded_media) > 0:
-                dishes = self.__get_tweet_dishes(mention_text, media_keys, expanded_media)
+                mention_text = mention.get('text')
+                media_keys = mention.get('attachments', {}).get('media_keys', [])
 
-            # if there aren't any dishes from the current tweet and the caller indicated recurse
-            if len(dishes) < 1:
-                # look up tweets referenced by this tweet
-                referenced_ids = [referenced_tweet['id'] for referenced_tweet in mention['referenced_tweets']]
-                # get
-                referenced_tweets_response = self.__get_referenced_tweets(referenced_ids)
-                expanded_media = self.__get_expanded_media(referenced_tweets_response)
-
-                referenced_tweets = referenced_tweets_response['data']
+                # if there was included media, try to create dishes for media in the current tweet
                 if len(expanded_media) > 0:
-                    for tweet in referenced_tweets:
-                        media_keys = tweet.get('attachments', {}).get('media_keys', [])
-                        dishes.extend(self.__get_tweet_dishes(mention_text, media_keys, expanded_media))
+                    dishes = self.__get_tweet_dishes(mention_text, media_keys, expanded_media)
 
-            if len(dishes) > 0:
-                order_id = str(uuid.uuid4())
-                tweet_id = mention['id']
+                # if there aren't any dishes from the current tweet and the caller indicated recurse
+                if len(dishes) < 1:
+                    # look up tweets referenced by this tweet
+                    referenced_ids = [referenced_tweet['id'] for referenced_tweet in mention['referenced_tweets']]
+                    # get
+                    referenced_tweets_response = self.__get_referenced_tweets(referenced_ids)
+                    expanded_media = self.__get_expanded_media(referenced_tweets_response)
 
-                for dish in dishes:
-                    dish['orderId'] = order_id
+                    referenced_tweets = referenced_tweets_response['data']
+                    if len(expanded_media) > 0:
+                        for tweet in referenced_tweets:
+                            media_keys = tweet.get('attachments', {}).get('media_keys', [])
+                            dishes.extend(self.__get_tweet_dishes(mention_text, media_keys, expanded_media))
 
-                order = {
-                    'orderId': order_id,
-                    'tweet_id': tweet_id,
-                    'author_id': mention['author_id'],
-                    'dishes': dishes
-                }
+                if len(dishes) > 0:
+                    order_id = str(uuid.uuid4())
+                    tweet_id = mention['id']
 
-                orders.append(order)
+                    for dish in dishes:
+                        dish['orderId'] = order_id
+
+                    order = {
+                        'orderId': order_id,
+                        'tweet_id': tweet_id,
+                        'author_id': mention['author_id'],
+                        'dishes': dishes
+                    }
+
+                    orders.append(order)
 
         return orders
 

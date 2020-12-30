@@ -2,6 +2,18 @@ import os
 
 from .twitter import Twitter
 
+try:
+    import yaml
+
+    with open('config.yml') as file:
+        config = yaml.load(file)
+
+    for name, value in config['dev'].items():
+        os.environ[name] = str(value)
+
+except ImportError:
+    print('Install pyaml to use a yaml config file')
+
 if __name__ == '__main__':
     # get application credentials
     bearer_token = os.getenv('BEARER_TOKEN')
@@ -28,9 +40,7 @@ if __name__ == '__main__':
     pin = input("Enter the pin:")
 
     # now get an access token with the agreed upon request token
-    api.oauth_access_token = request_token
-    api.oauth_access_token_secret = request_token_secret
-    access_token_response = api.post_for_access_token(pin)
+    access_token_response = api.post_for_access_token(pin, request_token, request_token_secret)
 
     body = access_token_response.text.split('&')
 
@@ -40,8 +50,7 @@ if __name__ == '__main__':
     user_id = body[2].split('=')[1]
     screen_name = body[3].split('=')[1]
 
-    # store these in keys.yml
     print()
-    print("Store these in keys.yml")
+    print("Store these in config.{stage}.yml")
     print("accessToken: " + access_token)
     print("accessTokenSecret: " + access_token_secret)

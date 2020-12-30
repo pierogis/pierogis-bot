@@ -16,11 +16,12 @@ provider:
     - Effect: 'Allow'
       Action:
         - 's3:PutObject'
+        - 's3:GetObject'
       Resource:
         Fn::Join:
           - ""
           - - "arn:aws:s3:::"
-            - ${env:ORDERS_BUCKET}
+            - ${file(./config.yml):${self:custom.stage}.ORDERS_BUCKET}
             - "/*"
     - Effect: 'Allow'
       Action:
@@ -48,55 +49,66 @@ provider:
             - ":parameter"
             - "/pierogis/chef/sinceId"
   deploymentBucket:
-    name: ${env:ORDERS_BUCKET}
+    name: ${file(./config.yml):${self:custom.stage}.ORDERS_BUCKET}
   environment:
-    OAUTH_CONSUMER_KEY: ${env:OAUTH_CONSUMER_KEY}
-    OAUTH_CONSUMER_SECRET: ${env:OAUTH_CONSUMER_SECRET}
-    BEARER_TOKEN: ${env:BEARER_TOKEN}
-    ORDERS_BUCKET: ${env:ORDERS_BUCKET}
+    OAUTH_CONSUMER_KEY: ${file(./config.yml):${self:custom.stage}.OATH_CONSUMER_KEY}
+    OAUTH_CONSUMER_SECRET: ${file(./config.yml):${self:custom.stage}.OAUTH_CONSUMER_SECRET}
+    BEARER_TOKEN: ${file(./config.yml):${self:custom.stage}.BEARER_TOKEN}
+    ORDERS_BUCKET: ${file(./config.yml):${self:custom.stage}.ORDERS_BUCKET}
 
 # you can define service wide environment variables here
 #  environment:
 #    variable1: value1
 
-# you can add packaging information here
-#package:
-#  include:
-#    - include-me.py
-#    - include-me-dir/**
-#  exclude:
-#    - exclude-me.py
-#    - exclude-me-dir/**
+package:
+  exclude:
+    - 'events/**'
+    - '.idea/**'
+    - 'node_modules/**'
+    - '.gitignore'
+    - 'package.json'
+    - 'package-lock.json'
+    - 'readme.md'
+    - 'requirements.txt'
+    - 'serverless.yml'
+    - 'setup.py'
 
 functions:
-  PollMentions:
+  pollMentions:
     handler: handler.poll_mentions
+    package:
+      artifact:
     events:
-      - schedule: rate(1 hour)
+      - schedule: rate(5 minutes)
     environment:
       KITCHEN_ARN:
         Ref: Kitchen
-      USER_ID: ${env:USER_ID}
-      ORDERS_TABLE:
-        Ref: OrdersTable
-  DownloadIngredients:
+      USER_ID: ${file(./config.yml):${self:custom.stage}.USER_ID}
+      ORDERS_TABLE: ${self:custom.ordersTable}
+  downloadIngredients:
     handler: handler.download_ingredients
+    package:
+      artifact:
     events:
       - sqs:
           arn:
             Fn::GetAtt:
               - DownloadIngredientsQueue
               - Arn
-  CookDish:
+  cookDish:
     handler: handler.cook_dishes
+    package:
+      artifact:
     events:
       - sqs:
           arn:
             Fn::GetAtt:
               - CookDishQueue
               - Arn
-  ReplyTweet:
+  replyTweet:
     handler: handler.reply_tweets
+    package:
+      artifact:
     events:
       - sqs:
           arn:
@@ -104,15 +116,15 @@ functions:
               - ServeOrderQueue
               - Arn
     environment:
-      OAUTH_ACCESS_TOKEN: ${env:OAUTH_ACCESS_TOKEN}
-      OAUTH_ACCESS_TOKEN_SECRET: ${env:OAUTH_ACCESS_TOKEN_SECRET}
-      ORDERS_TABLE: ${env:ORDERS_TABLE}
+      OAUTH_ACCESS_TOKEN: ${file(./config.yml):${self:custom.stage}.OAUTH_ACCESS_TOKEN}
+      OAUTH_ACCESS_TOKEN_SECRET: ${file(./config.yml):${self:custom.stage}.OAUTH_ACCESS_TOKEN_SECRET}
+      ORDERS_TABLE: ${self:custom.ordersTable}
 
 stepFunctions:
   stateMachines:
     Kitchen:
       id: Kitchen
-      name: Kitchen
+      name: ${self:custom.kitchenStateMachine}
       definition:
         Comment: "Workflow for cooking orders from a batch request in parallel and executing a reply action"
         StartAt: CookingOrder
@@ -171,19 +183,19 @@ resources:
     DownloadIngredientsQueue:
       Type: AWS::SQS::Queue
       Properties:
-        QueueName: DownloadIngredientsQueue
+        QueueName: ${self:custom.downloadIngredientsQueue}
     CookDishQueue:
       Type: AWS::SQS::Queue
       Properties:
-        QueueName: CookDishQueue
+        QueueName: ${self:custom.cookDishQueue}
     ServeOrderQueue:
       Type: AWS::SQS::Queue
       Properties:
-        QueueName: ServeOrderQueue
+        QueueName: ${self:custom.serveOrderQueue}
     OrdersTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: OrdersTable
+        TableName: ${self:custom.ordersTable}
         AttributeDefinitions:
           - AttributeName: orderId
             AttributeType: S
@@ -205,3 +217,9 @@ plugins:
 custom:
   pythonRequirements:
     dockerizePip: non-linux
+  stage: ${opt:stage, self:provider.stage, dev}
+  downloadIngredientsQueue: download-ingredients-${self:custom.stage}
+  cookDishQueue: cook-dish-${self:custom.stage}
+  serveOrderQueue: serve-order-${self:custom.stage}
+  ordersTable: orders-${self:custom.stage}
+  kitchenStateMachine: kitchen-${self:custom.stage}

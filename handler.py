@@ -2,13 +2,22 @@ import json
 import os
 
 import boto3
-from dotenv import load_dotenv
 
 from pierogis_bot import Bot
 
-print('Select function to test')
+try:
+    import yaml
 
-load_dotenv('.env')
+    with open('config.yml') as file:
+        config = yaml.load(file)
+
+    for name, value in config['dev'].items():
+        os.environ[name] = str(value)
+
+except ImportError:
+    dotenv = None
+
+print('Select function to test')
 
 oauth_consumer_key = os.getenv('OAUTH_CONSUMER_KEY')
 oauth_consumer_secret = os.getenv('OAUTH_CONSUMER_SECRET')
