@@ -68,7 +68,7 @@ package:
     - '.gitignore'
     - 'package.json'
     - 'package-lock.json'
-    - 'readme.md'
+    - 'README.md'
     - 'requirements.txt'
     - 'serverless.yml'
     - 'setup.py'
