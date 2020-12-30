@@ -51,7 +51,7 @@ provider:
   deploymentBucket:
     name: ${file(./config.yml):${self:custom.stage}.ORDERS_BUCKET}
   environment:
-    OAUTH_CONSUMER_KEY: ${file(./config.yml):${self:custom.stage}.OATH_CONSUMER_KEY}
+    OAUTH_CONSUMER_KEY: ${file(./config.yml):${self:custom.stage}.OAUTH_CONSUMER_KEY}
     OAUTH_CONSUMER_SECRET: ${file(./config.yml):${self:custom.stage}.OAUTH_CONSUMER_SECRET}
     BEARER_TOKEN: ${file(./config.yml):${self:custom.stage}.BEARER_TOKEN}
     ORDERS_BUCKET: ${file(./config.yml):${self:custom.stage}.ORDERS_BUCKET}
@@ -79,7 +79,7 @@ functions:
     package:
       artifact:
     events:
-      - schedule: rate(5 minutes)
+      - schedule: ${self:custom.${self:custom.stage}.pollSchedule}
     environment:
       KITCHEN_ARN:
         Ref: Kitchen
@@ -223,3 +223,7 @@ custom:
   serveOrderQueue: serve-order-${self:custom.stage}
   ordersTable: orders-${self:custom.stage}
   kitchenStateMachine: kitchen-${self:custom.stage}
+  prod:
+    pollSchedule: rate(5 minutes)
+  dev:
+    pollSchedule:

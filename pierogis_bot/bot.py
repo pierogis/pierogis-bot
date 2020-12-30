@@ -87,6 +87,9 @@ class Bot:
                     referenced_tweets = referenced_tweets_response['data']
                     if len(expanded_media) > 0:
                         for tweet in referenced_tweets:
+                            if tweet['author_id'] == self.user_id:
+                                continue
+
                             media_keys = tweet.get('attachments', {}).get('media_keys', [])
                             dishes.extend(self.__get_tweet_dishes(mention_text, media_keys, expanded_media))
 
