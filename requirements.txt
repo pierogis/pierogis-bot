@@ -2,4 +2,4 @@ requests
 requests-oauthlib
 boto3
 --extra-index-url https://test.pypi.org/simple/
-pierogis>=0.0.2
+pierogis>=0.0.3

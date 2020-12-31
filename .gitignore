@@ -17,6 +17,7 @@ var/
 *.egg
 /.idea/misc.xml
 /.idea/pierogis-bot.iml
+__pycache__/
 
 # Serverless directories
 .serverless

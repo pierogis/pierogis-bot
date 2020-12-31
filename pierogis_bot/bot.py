@@ -115,7 +115,12 @@ class Bot:
         dishes = []
 
         if len(media_keys) > 0:
-            recipe_text = ' '.join(tweet_text.split()[1:-1])
+            tweet_phrases = tweet_text.split()
+
+            while len(tweet_phrases) > 0 and tweet_phrases[0][0] == '@':
+                tweet_phrases.pop(0)
+
+            recipe_text = ' '.join(tweet_phrases)
 
             if recipe_text == '':
                 recipe_text = 'sort'
@@ -187,6 +192,7 @@ class Bot:
         # get the media from a set of tweets
         tweets_response = self.twitter.get_tweets(
             referenced_ids,
+            tweet_fields=['author_id'],
             expansions=['attachments.media_keys'], media_fields=['type',
                                                                  'url']
         )
