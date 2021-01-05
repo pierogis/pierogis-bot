@@ -1,6 +1,6 @@
 # pierogis-bot
 
-A bot that cooks pierogis.
+A bot that cooks [pierogis](https://github.com/pierogis/pierogis).
 
 A `pierogi` is just a stupid name for an image and to `cook` is just a stupid name for image processing.
 

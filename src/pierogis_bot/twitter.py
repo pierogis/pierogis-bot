@@ -109,14 +109,14 @@ class Twitter:
         if isinstance(media_fields, list):
             params['media.fields'] = ','.join(media_fields)
 
-        get_tweet_url = self.get_tweets_url
+        get_tweets_url = self.get_tweets_url
 
         # use the request token in oauth
         if (request_token is not None) & (request_token_secret is not None):
             oauth = self.get_oauth(request_token, request_token_secret)
-            return requests.get(url=get_tweet_url, params=params, auth=oauth).json()
+            return requests.get(url=get_tweets_url, params=params, auth=oauth).json()
         else:
-            return requests.get(url=get_tweet_url, params=params, headers=self.headers).json()
+            return requests.get(url=get_tweets_url, params=params, headers=self.headers).json()
 
     class MediaUpload:
         def __init__(self, media_upload_url, oauth, path):

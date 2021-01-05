@@ -3,7 +3,50 @@
     {
       "messageId": "1340685803215839234",
       "receiptHandle": "MessageReceiptHandle",
-      "body": "{\"ingredients\": {\"84ccc763-9d80-456e-86d6-209f40c51968\": {\"type\": \"pierogi\", \"args\": [], \"kwargs\": {\"file\": \"593b7190-5d64-4701-b0bf-714efce6f4d6\"}}, \"1645efde-887a-45e2-a8b3-ddc682e8bf48\": {\"type\": \"sort\", \"args\": [], \"kwargs\": {\"turns\": 0, \"lower_threshold\": 64, \"upper_threshold\": 180}}, \"481dc5a6-9c29-430a-9149-756442a827e3\": {\"type\": \"threshold\", \"args\": [], \"kwargs\": {\"lower_threshold\": 64, \"upper_threshold\": 180}}}, \"seasoningLinks\": {\"1645efde-887a-45e2-a8b3-ddc682e8bf48\": \"481dc5a6-9c29-430a-9149-756442a827e3\"}, \"recipes\": [[\"84ccc763-9d80-456e-86d6-209f40c51968\"], [\"1645efde-887a-45e2-a8b3-ddc682e8bf48\"]], \"fileLinks\": {\"593b7190-5d64-4701-b0bf-714efce6f4d6\": \"input_media/3d7104c7-9c77-43c1-959e-7eb25ef0166b/0.png\"}, \"orderId\": \"3d7104c7-9c77-43c1-959e-7eb25ef0166b\"}",
+      "body": {
+        "recipes": [
+          [
+            "df5d706c-abd0-49ec-abab-ed64a804f558"
+          ],
+          [
+            "2d2620ee-2040-47c4-92e1-08fd8a59f9d1"
+          ]
+        ],
+        "seasoningLinks": {
+          "2d2620ee-2040-47c4-92e1-08fd8a59f9d1": "d4f7d34e-a194-49eb-98d6-243a245f225c"
+        },
+        "orderId": "f3fb85e2-9f72-45f4-8aaf-2a99704d5b89",
+        "fileLinks": {
+          "e929ad5c-a4ec-4fa4-b493-622d2a25944b": "input_media/f3fb85e2-9f72-45f4-8aaf-2a99704d5b89/0.jpg"
+        },
+        "ingredients": {
+          "df5d706c-abd0-49ec-abab-ed64a804f558": {
+            "type": "pierogi",
+            "args": [],
+            "kwargs": {
+              "file": "e929ad5c-a4ec-4fa4-b493-622d2a25944b"
+            }
+          },
+          "2d2620ee-2040-47c4-92e1-08fd8a59f9d1": {
+            "type": "sort",
+            "args": [],
+            "kwargs": {
+              "turns": 0,
+              "lower_threshold": 64,
+              "upper_threshold": 180
+            }
+          },
+          "d4f7d34e-a194-49eb-98d6-243a245f225c": {
+            "type": "threshold",
+            "args": [],
+            "kwargs": {
+              "lower_threshold": 64,
+              "upper_threshold": 180
+            }
+          }
+        },
+        "taskToken": "AAAAKgAAAAIAAAAAAAAAATrgpcsJVP5Q5BL03ll+1DMxr6D9wfT34v52K5MvWrb0zAtTc+vOtoP0hFh+IOpWM8k5v0x965SNQrjElgw/eSn3EqsBVZuZ6MFauVYCIDTBj/N0dFo7B++W20Tak/c7eG9gdxhYWpN998zAPjzUDdVVnXTrkBF8UktypYj0p38HE2MnmyKQ3+BBT2E9dXMDlKmShJxVL7AgEbutH2bKAHF9srHUUdvz9v2Kn+ZR51tHGcJTytB/KxKWr05uluBk9kU/TWGXJVbCNuBUmrjx1ebnbAinJnbWGGmZzbgBrrb3Ra2sv4b8DfBse1XdvGKYb8Ag5Po2IWvofCBmLtmwr4MQhEaJDPf25zWzlBOdM7uD5J6b+h8WJrB0Wz++w3+czJDqr6PRkXQrCWJU3oq7rKx1ZlQ4UfUyT13aTED5b9LTjwuuWJmOUXAksXE+PnxGirT9jKsJKdOhgBLVyCOBQdNBPMfg7C3DRsD2/1p0SVuJvxLF64Oc/h0RVOK0m6Acu8vsaqLHLpU5rqMuuOcqo9DdRc3AlgiJejIJctcaycSvwR3pv0sXEmh5VO15igEFbG1UOV40niFo7/mf7pvc7bs="
+      },
       "attributes": {
         "ApproximateReceiveCount": "1",
         "SentTimestamp": "1523232000000",

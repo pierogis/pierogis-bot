@@ -75,7 +75,7 @@ package:
 
 functions:
   pollMentions:
-    handler: handler.poll_mentions
+    handler: pierogis_bot.serverless.poll_mentions
     package:
       artifact:
     events:
@@ -86,7 +86,7 @@ functions:
       USER_ID: ${file(./config.yml):${self:custom.stage}.USER_ID}
       ORDERS_TABLE: ${self:custom.ordersTable}
   downloadIngredients:
-    handler: handler.download_ingredients
+    handler: pierogis_bot.serverless.download_ingredients
     package:
       artifact:
     events:
@@ -96,7 +96,7 @@ functions:
               - DownloadIngredientsQueue
               - Arn
   cookDish:
-    handler: handler.cook_dishes
+    handler: pierogis_bot.serverless.cook_dishes
     package:
       artifact:
     events:
@@ -106,7 +106,7 @@ functions:
               - CookDishQueue
               - Arn
   replyTweet:
-    handler: handler.reply_tweets
+    handler: pierogis_bot.serverless.reply_tweets
     package:
       artifact:
     events:
@@ -184,14 +184,30 @@ resources:
       Type: AWS::SQS::Queue
       Properties:
         QueueName: ${self:custom.downloadIngredientsQueue}
+        RedrivePolicy:
+          deadLetterTargetArn:
+            Fn::GetAtt: [ DeadLetterQueue, Arn ]
+          maxReceiveCount: 1
     CookDishQueue:
       Type: AWS::SQS::Queue
       Properties:
         QueueName: ${self:custom.cookDishQueue}
+        RedrivePolicy:
+          deadLetterTargetArn:
+            Fn::GetAtt: [ DeadLetterQueue, Arn ]
+          maxReceiveCount: 1
     ServeOrderQueue:
       Type: AWS::SQS::Queue
       Properties:
         QueueName: ${self:custom.serveOrderQueue}
+        RedrivePolicy:
+          deadLetterTargetArn:
+            Fn::GetAtt: [ DeadLetterQueue, Arn ]
+          maxReceiveCount: 1
+    DeadLetterQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:custom.deadLetterQueue}
     OrdersTable:
       Type: AWS::DynamoDB::Table
       Properties:
@@ -218,9 +234,10 @@ custom:
   pythonRequirements:
     dockerizePip: non-linux
   stage: ${opt:stage, self:provider.stage, dev}
-  downloadIngredientsQueue: download-ingredients-${self:custom.stage}
-  cookDishQueue: cook-dish-${self:custom.stage}
-  serveOrderQueue: serve-order-${self:custom.stage}
+  downloadIngredientsQueue: downloadIngredients-${self:custom.stage}
+  cookDishQueue: cookDish-${self:custom.stage}
+  serveOrderQueue: serveOrder-${self:custom.stage}
+  deadLetterQueue: deadLetter-${self:custom.stage}
   ordersTable: orders-${self:custom.stage}
   kitchenStateMachine: kitchen-${self:custom.stage}
   prod:
