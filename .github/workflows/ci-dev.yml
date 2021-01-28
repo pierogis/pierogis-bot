@@ -1,0 +1,35 @@
+name: deploy dev
+
+on:
+  push:
+    branches:
+      - develop
+
+env:
+  OAUTH_CONSUMER_KEY:
+
+jobs:
+  deploy-develop-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: install python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+
+      - name: install dependencies
+        shell: bash
+        run: |
+          pip install -r requirements.txt
+
+      - name: serverless deploy
+        shell: bash
+        run: |
+          echo "OAUTH_CONSUMER_KEY=$OAUTH_CONSUMER_KEY" | sudo tee -a config.yml
+          echo "OAUTH_CONSUMER_SECRET=$OAUTH_CONSUMER_SECRET" | sudo tee -a config.yml
+          echo "BEARER_TOKEN=$BEARER_TOKEN" | sudo tee -a config.yml
+          echo "ORDERS_BUCKET=$ORDERS_BUCKET" | sudo tee -a config.yml
+          serverless deploy --stage=dev

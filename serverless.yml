@@ -1,10 +1,4 @@
 service: pierogis-bot
-# app and org for use with dashboard.serverless.com
-#app: your-app-name
-#org: your-org-name
-
-# You can pin your service to only deploy with a specific Serverless version
-# Check out our docs for more details
 frameworkVersion: '2'
 
 useDotenv: true
@@ -55,10 +49,6 @@ provider:
     OAUTH_CONSUMER_SECRET: ${file(./config.yml):${self:custom.stage}.OAUTH_CONSUMER_SECRET}
     BEARER_TOKEN: ${file(./config.yml):${self:custom.stage}.BEARER_TOKEN}
     ORDERS_BUCKET: ${file(./config.yml):${self:custom.stage}.ORDERS_BUCKET}
-
-# you can define service wide environment variables here
-#  environment:
-#    variable1: value1
 
 package:
   exclude:
@@ -184,6 +174,7 @@ resources:
       Type: AWS::SQS::Queue
       Properties:
         QueueName: ${self:custom.downloadIngredientsQueue}
+        ReceiveMessageWaitTimeSeconds: 20
         RedrivePolicy:
           deadLetterTargetArn:
             Fn::GetAtt: [ DeadLetterQueue, Arn ]
@@ -192,6 +183,7 @@ resources:
       Type: AWS::SQS::Queue
       Properties:
         QueueName: ${self:custom.cookDishQueue}
+        ReceiveMessageWaitTimeSeconds: 20
         RedrivePolicy:
           deadLetterTargetArn:
             Fn::GetAtt: [ DeadLetterQueue, Arn ]
@@ -200,6 +192,7 @@ resources:
       Type: AWS::SQS::Queue
       Properties:
         QueueName: ${self:custom.serveOrderQueue}
+        ReceiveMessageWaitTimeSeconds: 20
         RedrivePolicy:
           deadLetterTargetArn:
             Fn::GetAtt: [ DeadLetterQueue, Arn ]
@@ -208,6 +201,7 @@ resources:
       Type: AWS::SQS::Queue
       Properties:
         QueueName: ${self:custom.deadLetterQueue}
+        ReceiveMessageWaitTimeSeconds: 20
     OrdersTable:
       Type: AWS::DynamoDB::Table
       Properties:
@@ -234,13 +228,13 @@ custom:
   pythonRequirements:
     dockerizePip: non-linux
   stage: ${opt:stage, self:provider.stage, dev}
-  downloadIngredientsQueue: downloadIngredients-${self:custom.stage}
-  cookDishQueue: cookDish-${self:custom.stage}
-  serveOrderQueue: serveOrder-${self:custom.stage}
-  deadLetterQueue: deadLetter-${self:custom.stage}
+  downloadIngredientsQueue: download-ingredients-${self:custom.stage}
+  cookDishQueue: cook-dish-${self:custom.stage}
+  serveOrderQueue: serve-order-${self:custom.stage}
+  deadLetterQueue: dead-letter-${self:custom.stage}
   ordersTable: orders-${self:custom.stage}
   kitchenStateMachine: kitchen-${self:custom.stage}
-  prod:
+  live:
     pollSchedule: rate(5 minutes)
   dev:
     pollSchedule:

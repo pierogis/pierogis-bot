@@ -16,9 +16,9 @@ bot = load_env_bot()
 
 def send_orders(orders):
     """
-    Send a set of order description to the kitchen state machine
+    send a set of order descriptions to the kitchen state machine
 
-    :return:
+    not a lambda
     """
     kitchen_arn = os.getenv('KITCHEN_ARN')
     orders_table_name = os.getenv('ORDERS_TABLE')
@@ -53,6 +53,9 @@ def send_orders(orders):
 
 
 def poll_mentions(event, context):
+    """
+    poll the mentions since the since id stored in the database
+    """
     # get the last tweet processed from parameter store
     ssm = boto3.client('ssm')
     parameter_response = ssm.get_parameter(Name='/pierogis/chef/sinceId')
