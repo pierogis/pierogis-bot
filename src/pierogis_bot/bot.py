@@ -1,6 +1,6 @@
 import uuid
 
-from pierogis import Chef
+from pyrogis import Chef
 
 from .twitter import Twitter
 

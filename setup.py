@@ -14,7 +14,7 @@ setup(
         'requests>=2.25.1',
         'requests-oauthlib',
         'boto3',
-        'pierogis>=0.0.3'
+        'pyrogis>=0.2.0'
     ],
     extras_require={
         'yaml': ['pyaml'],
