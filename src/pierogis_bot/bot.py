@@ -1,6 +1,6 @@
 import uuid
 
-from pyrogis import Chef
+from pyrogis import Kitchen
 
 from .twitter import Twitter
 
@@ -27,7 +27,7 @@ class Bot:
         """
         self.user_id = user_id
         self.twitter = Twitter(bearer_token, oauth_consumer_key, oauth_consumer_secret)
-        self.chef = Chef()
+        self.kitchen = Kitchen()
 
         self.oauth_access_token = oauth_access_token
         self.oauth_access_token_secret = oauth_access_token_secret
@@ -193,7 +193,7 @@ class Bot:
 
         return orders
 
-    def cook_dish(self, ingredient_descs, seasoning_links, recipe_orders, file_links):
+    def cook(self, dish_descs):
         """
         receive dish description, cook, and store in tmp
 
@@ -204,9 +204,9 @@ class Bot:
         :return:
         """
 
-        cooked_dish = self.chef.cook_dish_desc(ingredient_descs, seasoning_links, recipe_orders, file_links)
+        cooked_dishes = self.kitchen.cook_dish_descs(dish_descs)
 
-        return cooked_dish
+        return cooked_dishes
 
     def reply_tweet(self, tweet_id, author_id, paths):
         media_ids = []

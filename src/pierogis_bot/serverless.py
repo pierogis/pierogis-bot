@@ -5,8 +5,10 @@ import os
 
 import boto3
 import requests
+from pyrogis.chef import DishDescription
 
 from .bot import Bot
+from pyrogis import Kitchen
 from .utils import load_env_bot
 
 bot = load_env_bot()
@@ -117,6 +119,8 @@ def cook_dishes(event, context):
     s3 = boto3.resource('s3')
     orders_bucket = s3.Bucket(orders_bucket_name)
 
+    dish_descs = {}
+
     records = event['Records']
     for record in records:
         body = record['body']
@@ -124,22 +128,38 @@ def cook_dishes(event, context):
             body = json.loads(body)
 
         order_id = body['orderId']
-        ingredient_descs = body['ingredients']
+        ingredients = body['ingredients']
         seasoning_links = body['seasoningLinks']
-        recipe_orders = body['recipes']
-        file_links = body['fileLinks']
+        dish = body['dish']
+        files = body['files']
+        pierogis = body['pierogis']
 
-        for ingredient_uuid, s3_key in file_links.items():
+        dish_description = DishDescription(
+            ingredients=ingredients,
+            pierogis=pierogis,
+            files=files,
+            dish=dish,
+            seasoning_links=seasoning_links
+        )
+
+        dish_descs[order_id] = dish_description
+
+        Kitchen()
+
+        for ingredient_uuid, s3_key in files.items():
             path = '/tmp/' + order_id + '-' + s3_key.split('/')[-1]
             orders_bucket.download_file(s3_key, path)
-            file_links[ingredient_uuid] = path
+            files[ingredient_uuid] = path
 
+    kitchen = Kitchen()
+
+    cooked_dishes = kitchen.cook_dishes(dish_descs)
+    for dish in cooked_dishes:
         output_filename = order_id + '.png'
         output_key = '/'.join(['output_media', output_filename])
         output_path = '/'.join(['/tmp', output_filename])
 
-        cooked_dish = bot.cook_dish(ingredient_descs, seasoning_links, recipe_orders, file_links)
-        cooked_dish.save(output_path)
+        dish.save(output_path)
         orders_bucket.upload_file(output_path, output_key)
 
         task_token = body.get('taskToken')
